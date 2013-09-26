@@ -35,6 +35,9 @@
 #include "ofl.h"
 #include "ofl-actions.h"
 #include "ofl-log.h"
+#ifdef OTN_SUPPORT
+#include "ofp.h"
+#endif
 
 #define LOG_MODULE ofl_act
 OFL_LOG_INIT(LOG_MODULE)
@@ -103,3 +106,91 @@ ofl_utils_count_ofp_actions(void *data, size_t data_len, size_t *count) {
 
     return 0;
 }
+
+#ifdef OTN_SUPPORT
+int  
+ofl_exp_msg_act_pack(struct ofl_action_header *src, struct ofp_action_header *dst)
+{
+   struct ofl_action_tlab_experimenter_header *sa = (struct ofl_action_tlab_experimenter_header *)src;
+   struct ofp_action_tlab_experimenter_header *da = (struct ofp_action_tlab_experimenter_header *)dst;
+   int i=0;
+
+   da->len = htons(sizeof(struct ofp_action_tlab_experimenter_header));
+
+   if (ofl_validate_tlabs_experimenter(sa->experimenter) != 0) {
+       return ofp_mkerr(OFPET_BAD_ACTION, OFPBAC_BAD_EXPERIMENTER);
+   }
+   da->experimenter = htonl(sa->experimenter);
+
+   switch(sa->action) {
+       case OFPXMT_TLAB_GMPLS_LABEL:
+           da->action = sa->action;
+           for(i=0;i<4;i++) {
+               da->payload[i] = htonl(sa->payload[i]);
+           }
+           break;
+       default:
+           return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_EXP_TYPE);
+   }
+
+   return sizeof(struct ofp_action_tlab_experimenter_header);
+}
+
+ofl_err 
+ofl_exp_msg_act_unpack(struct ofp_action_header *src, size_t *len, struct ofl_action_header **dst)
+{
+    struct ofl_action_tlab_experimenter_header *sa_act_exp_msg = (struct ofl_action_tlab_experimenter_header *)src;
+    struct ofp_action_tlab_experimenter_header *da_act_exp_msg = (struct ofp_action_tlab_experimenter_header *)malloc(sizeof(struct ofp_action_tlab_experimenter_header));
+    int i, label_len=0;
+
+    
+    if (*len < ntohs(sa_act_exp_msg->len)) {
+          OFL_LOG_WARN(LOG_MODULE, "Received Tellabs Experimenter action has invalid length (%zu)., expecting atleast.(%zu)", *len,ntohs(sa_act_exp_msg->len));
+          return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_LEN);
+    }
+
+    da_act_exp_msg->experimenter = ntohl(sa_act_exp_msg->experimenter);
+
+    if (ofl_validate_tlabs_experimenter(da_act_exp_msg->experimenter ) != 0 ) {
+          free(da_act_exp_msg);
+          return ofp_mkerr(OFPET_BAD_ACTION, OFPBAC_BAD_EXPERIMENTER);
+    }
+
+    da_act_exp_msg->len = ntohs(sa_act_exp_msg->len);
+
+    switch(sa_act_exp_msg->action) {
+          case OFPXMT_TLAB_GMPLS_LABEL :
+               da_act_exp_msg->action = (sa_act_exp_msg->action);
+               label_len = ntohs(sa_act_exp_msg->len)-(offsetof(struct ofl_action_tlab_experimenter_header ,payload));
+               for(i=0 ;label_len>0 ;i++,label_len-=4)
+                   da_act_exp_msg->payload[i] = ntohl(sa_act_exp_msg->payload[i]);
+               break;
+          default:
+            return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_EXP_TYPE);
+    }
+
+    *len -= ntohs(sa_act_exp_msg->len);
+    *dst = (struct ofp_action_header *)da_act_exp_msg;
+    return 0;
+}
+
+int 
+ofl_exp_msg_act_free(struct ofl_action_header *act)
+{
+  return 0;
+}
+
+size_t  
+ofl_exp_msg_act_ofp_len(struct ofl_action_header *act)
+{
+     return sizeof(struct ofp_action_tlab_experimenter_header);
+}
+
+char   *
+ofl_exp_msg_act_to_string(struct ofl_action_header *act)
+{
+
+  return 0;
+}
+
+#endif

@@ -585,5 +585,7 @@ ofl_msg_to_string(struct ofl_msg_header *msg, struct ofl_exp *exp);
 void
 ofl_msg_print(FILE *stream, struct ofl_msg_header *msg, struct ofl_exp *exp);
 
-
+#ifdef OTN_SUPPORT
+int ofl_get_msg_type (uint8_t *buf, size_t buf_len);
+#endif
 #endif /* OFL_MESSAGES_H */

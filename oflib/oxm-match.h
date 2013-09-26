@@ -279,12 +279,31 @@
 
 /* IPv4 TTL */
 #define OXM_OF_IPV4_TTL OXM_HEADER (0x0002, 81, 1)
+/*TELABS Properitry match fields*/
+#ifdef OTN_SUPPORT
+  #define OTN_GMPLS_SWCAPENCTYPE_LEN 6
+  #define OTN_GMPLS_SIGTYPE_LEN      5
+  #define OTN_GMPLS_LABEL_LEN        8
+  #define OTN_GMPLS_LABEL_ODU_LEN    12
+
+  #define OXM_TLAB_GMPLS_SWCAPENCTYPE  OXM_HEADER(0xffff, 1, OTN_GMPLS_SWCAPENCTYPE_LEN)
+  #define OXM_TLAB_GMPLS_SIGTYPE       OXM_HEADER(0xffff, 2, OTN_GMPLS_SIGTYPE_LEN)
+  #define OXM_TLAB_GMPLS_LABEL         OXM_HEADER(0xffff, 3, OTN_GMPLS_LABEL_LEN)
+  #define OXM_TLAB_GMPLS_LABEL_ODU     OXM_HEADER(0xffff, 3, OTN_GMPLS_LABEL_ODU_LEN)
+
+
+#define OTN_TLABS_EXP_ID 0x0000b0c7
+#endif
 
 enum oxm_field_index {
 #define DEFINE_FIELD(HEADER,DL_TYPES, NW_PROTO, MASKABLE) \
         OFI_OXM_##HEADER,
 #include "oxm-match.def"
+#ifdef OTN_SUPPORT
+    NUM_OXM_FIELDS
+#else
     NUM_OXM_FIELDS = 56
+#endif
 };
 
 struct oxm_field {

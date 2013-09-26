@@ -239,8 +239,30 @@ struct ofl_match_tlv{
     uint32_t header;    /* TLV header */
     uint8_t *value;     /* TLV value */
 };
+#ifdef OTN_SUPPORT
+typedef struct ofp_oxm_tlab_gmpls_swcapenctype_s {
+    uint32_t experimenter; /* Experimenter ID which takes the same
+                               form as in struct ofp_experimenter_header. */
+    uint8_t swcap;  /* GMPLS Switching Capability as defined by IANA */
+    uint8_t enctype; /* GMPLS Encoding Type as defined by IANA */
+}ofp_oxm_tlab_gmpls_swcapenctype_t;
+OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_swcapenctype_s) == 8);
 
+typedef struct ofp_oxm_tlab_gmpls_sigtype_s {
+    uint32_t experimenter; /* Experimenter ID which takes the same
+                              form as in struct ofp_experimenter_header. */
+    uint8_t sig_type;  /* GMPLS Signal Type as defined by IANA */
+}ofp_oxm_tlab_gmpls_sigtype_t;
+OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_sigtype_s) == 8);
 
+typedef struct ofp_oxm_tlab_gmpls_label_s {
+    uint32_t experimenter; /* Experimenter ID which takes the same
+                              form as in struct ofp_experimenter_header. */
+    uint32_t label[4];  /* Variable length label */
+}ofp_oxm_tlab_gmpls_label_t;
+OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_label_s) == 20);
+
+#endif
 /* Common header for all meter bands */
 struct ofl_meter_band_header {
     uint16_t type; /* One of OFPMBT_*. */
@@ -443,6 +465,11 @@ ofl_structs_match_put_ipv6(struct ofl_match *match, uint32_t header, uint8_t val
 
 void
 ofl_structs_match_put_ipv6m(struct ofl_match *match, uint32_t header, uint8_t value[IPv6_ADDR_LEN], uint8_t mask[IPv6_ADDR_LEN]);
+#ifdef OTN_SUPPORT
+int ofl_structs_match_put_tlabs_gmpls_swcapenctype( struct ofl_match *match, uint32_t  header, uint8_t* value);
+int ofl_structs_match_put_tlabs_gmpls_sigtype( struct ofl_match *match, uint32_t  header, uint8_t* value);
+int ofl_structs_match_put_tlabs_gmpls_label( struct ofl_match *match, uint32_t  header, uint8_t* value);
+#endif
 
 #ifdef __cplusplus
 }

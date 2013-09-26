@@ -329,6 +329,35 @@ enum oxm_ofb_match_fields {
     OFPXMT_OFB_TUNNEL_ID = 38,      /* Logical Port Metadata. */
     OFPXMT_OFB_IPV6_EXTHDR = 39     /* IPv6 Extension Header pseudo-field */
 };
+#ifdef OTN_SUPPORT
+enum ofp_experimenters_field {
+  OFPXMT_TLAB_GMPLS_SWCAPENCTYPE = 1,
+  OFPXMT_TLAB_GMPLS_SIGTYPE = 2,
+  OFPXMT_TLAB_GMPLS_LABEL = 3
+};
+
+struct ofp_oxm_tlab_gmpls_label {
+  uint32_t oxm_header; /* oxm_class = OFPXMC_EXPERIMENTER */
+  uint32_t experimenter; /* Experimenter ID which takes the same form as in struct ofp_experimenter_header. */
+  uint8_t label[0];  /* Variable length label */
+};
+OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_label) == 8);
+
+struct ofp_oxm_tlab_gmpls_swcapenctype {
+  uint32_t oxm_header; /* oxm_class = OFPXMC_EXPERIMENTER */
+  uint32_t experimenter; /* Experimenter ID which takes the same form as in struct ofp_experimenter_header. */
+  uint8_t swcap;  /* GMPLS Switching Capability as defined by IANA */
+  uint8_t enctype; /* GMPLS Encoding Type as defined by IANA */
+};
+OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_swcapenctype) == 12);
+
+struct ofp_oxm_tlab_gmpls_sigtype {
+  uint32_t oxm_header; /* oxm_class = OFPXMC_EXPERIMENTER */
+  uint32_t experimenter; /* Experimenter ID which takes the same form as in struct ofp_experimenter_header. */
+  uint8_t swcap;  /* GMPLS Switching Capability as defined by IANA */
+};
+OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_sigtype) == 12);
+#endif
 
 /* The VLAN id is 12-bits, so we can use the entire 16 bits to indicate
 * special conditions.

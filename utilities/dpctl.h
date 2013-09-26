@@ -149,7 +149,10 @@ static struct names16 action_names[] = {
         {OFPAT_GROUP,          "group"},
         {OFPAT_SET_NW_TTL,     "nw_ttl"},
         {OFPAT_DEC_NW_TTL,     "nw_dec"},
-        {OFPAT_SET_FIELD,      "set_field"}
+        {OFPAT_SET_FIELD,      "set_field"},
+#ifdef OTN_SUPPORT
+        {OFPAT_EXPERIMENTER,      "exp"}
+#endif
 };
 
 static struct names16 band_names[] = {
@@ -215,6 +218,12 @@ static struct names16 band_names[] = {
 #define MATCH_PBB_ISID       "pbb_isid"
 #define MATCH_TUNNEL_ID      "tunn_id"    
 #define MATCH_EXT_HDR        "ext_hdr"
+#ifdef OTN_SUPPORT
+#define MATCH_GMPLS_SWCAP    "gmpls_swcap"
+#define MATCH_GMPLS_SIGTYPE  "gmpls_sigtype"
+#define MATCH_GMPLS_LABEL    "gmpls_label"
+#endif // OTN_SUPPORT
+
 
 #define GROUP_MOD_COMMAND "cmd"
 #define GROUP_MOD_TYPE    "type"

@@ -31,6 +31,9 @@
 #include "ofl-structs.h"
 #include "lib/hash.h"
 #include "oxm-match.h"
+#ifdef OTN_SUPPORT
+#include "ofp.h"
+#endif
 
 void
 ofl_structs_match_init(struct ofl_match *match){
@@ -202,3 +205,69 @@ ofl_structs_match_put_ipv6m(struct ofl_match *match, uint32_t header, uint8_t va
 
 }
 
+#ifdef OTN_SUPPORT
+int
+ofl_structs_match_put_tlabs_gmpls_swcapenctype(struct ofl_match *match, uint32_t header, uint8_t* value) {
+    struct ofl_match_tlv *m = malloc(sizeof (struct ofl_match_tlv));
+    int len = OXM_LENGTH(header);
+    uint32_t exp_id = ntohl( ((ofp_oxm_tlab_gmpls_swcapenctype_t *)value)->experimenter);
+
+    if (ofl_validate_tlabs_experimenter(exp_id ) != 0 )
+          return ofp_mkerr(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
+
+    m->header = header;
+    m->value = malloc(len);
+    memcpy(m->value, value, len);
+    hmap_insert(&match->match_fields,&m->hmap_node,hash_int(header, 0));
+    match->header.length += len + 4;
+    return 0;
+}
+
+int
+ofl_structs_match_put_tlabs_gmpls_sigtype(struct ofl_match *match, uint32_t header, uint8_t* value) {
+    struct ofl_match_tlv *m = malloc(sizeof (struct ofl_match_tlv));
+    int len = OXM_LENGTH(header);
+    uint32_t exp_id = ntohl( ((ofp_oxm_tlab_gmpls_sigtype_t *)value)->experimenter);
+
+    if (ofl_validate_tlabs_experimenter(exp_id ) != 0 )
+          return ofp_mkerr(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
+
+    m->header = header;
+    m->value = malloc(len);
+    memcpy(m->value, value, len);
+    hmap_insert(&match->match_fields,&m->hmap_node,hash_int(header, 0));
+    match->header.length += len + 4;
+    return 0;
+}
+
+int
+ofl_structs_match_put_tlabs_gmpls_label( struct ofl_match *match, uint32_t  header, uint8_t* value) {
+    struct ofl_match_tlv *m = malloc(sizeof (struct ofl_match_tlv));
+    int len = OXM_LENGTH(header);
+    uint32_t exp_id = ntohl( ((ofp_oxm_tlab_gmpls_label_t *)value)->experimenter);
+    uint32_t *some_ptr,i;
+    uint32_t *some_other_ptr;
+
+    if (ofl_validate_tlabs_experimenter(exp_id ) != 0 )
+          return ofp_mkerr(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
+
+    m->header = header;
+    m->value = malloc(len);
+    for ( i=0; i < (len/4)+((len%4)?0:1); i++) {
+      some_ptr= value+(i*4);
+      some_other_ptr= m->value+(i*4);
+      *some_other_ptr= ntohl(*some_ptr);
+    }
+    hmap_insert(&match->match_fields,&m->hmap_node,hash_int(header, 0));
+    match->header.length += len + 4;
+    return 0;
+}
+
+int ofl_validate_tlabs_experimenter(uint32_t r_eid)
+{
+    if (r_eid == OTN_TLABS_EXP_ID) {
+        return 0;
+    }
+    return -1;
+}
+#endif

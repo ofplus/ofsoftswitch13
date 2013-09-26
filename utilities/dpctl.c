@@ -192,8 +192,23 @@ static struct ofl_exp_msg dpctl_exp_msg =
          .free      = ofl_exp_msg_free,
          .to_string = ofl_exp_msg_to_string};
 
+#ifdef OTN_SUPPORT
+static struct ofl_exp_act dp_exp_act_msg = {
+         .pack = ofl_exp_msg_act_pack,
+         .unpack = ofl_exp_msg_act_unpack,
+         .free = ofl_exp_msg_act_free, 
+         .ofp_len = ofl_exp_msg_act_ofp_len,
+         .to_string = NULL // fl_exp_msg_act_to_string
+};
+#endif // OTN_SUPPORT
+
 static struct ofl_exp dpctl_exp =
-        {.act   = NULL,
+        {
+#ifndef OTN_SUPPORT
+         .act   = NULL,
+#else
+         .act   = &dp_exp_act_msg,
+#endif // OTN_SUPPORT
          .inst  = NULL,
          .match = NULL,
          .stats = NULL,
@@ -1540,6 +1555,56 @@ parse_match(char *str, struct ofl_match_header **match) {
             else ofl_structs_match_put16(m, OXM_OF_IPV6_EXTHDR, ext_hdr);
             continue;
         }
+
+#ifdef OTN_SUPPORT
+        /* GMPLS */
+         if (strncmp(token, MATCH_GMPLS_SWCAP KEY_VAL, strlen(MATCH_GMPLS_SWCAP KEY_VAL)) == 0) {
+            ofp_oxm_tlab_gmpls_swcapenctype_t gmpls_swcap;
+            uint8_t swcap;
+            memset(&gmpls_swcap, 0, sizeof(ofp_oxm_tlab_gmpls_swcapenctype_t));
+            if (parse8(token + strlen(MATCH_GMPLS_SWCAP KEY_VAL),NULL,0,0x3f, &swcap)) {
+                ofp_fatal(0, "Error parsing gmpls swcap: %s.", token);
+            }
+            else {
+                gmpls_swcap.experimenter = htonl(OTN_TLABS_EXP_ID);
+                gmpls_swcap.swcap = (swcap);
+                ofl_structs_match_put_tlabs_gmpls_swcapenctype(m,OXM_TLAB_GMPLS_SWCAPENCTYPE, &gmpls_swcap);
+            }  
+            continue;
+        }
+
+
+         if (strncmp(token, MATCH_GMPLS_SIGTYPE KEY_VAL, strlen(MATCH_GMPLS_SIGTYPE KEY_VAL)) == 0) {
+            ofp_oxm_tlab_gmpls_sigtype_t gmpls_sigtype;
+            uint8_t sigtype;
+            memset(&gmpls_sigtype, 0, sizeof(ofp_oxm_tlab_gmpls_sigtype_t));
+            if (parse8(token + strlen(MATCH_GMPLS_SIGTYPE KEY_VAL),NULL,0,0x3f, &sigtype)) {
+                ofp_fatal(0, "Error parsing gmpls sigtype: %s.", token);
+            }
+            else {
+                gmpls_sigtype.experimenter = htonl(OTN_TLABS_EXP_ID);
+                gmpls_sigtype.sig_type = (sigtype);
+                ofl_structs_match_put_tlabs_gmpls_sigtype(m,OXM_TLAB_GMPLS_SIGTYPE, &gmpls_sigtype);
+            }  
+            continue;
+        }
+
+         if (strncmp(token, MATCH_GMPLS_LABEL KEY_VAL, strlen(MATCH_GMPLS_LABEL KEY_VAL)) == 0) {
+            ofp_oxm_tlab_gmpls_label_t gmpls_label;
+            memset(&gmpls_label,0,sizeof(ofp_oxm_tlab_gmpls_label_t));
+            uint32_t label;
+            if (parse32(token + strlen(MATCH_GMPLS_LABEL KEY_VAL),NULL,0,0xFFFFFFFF, &label)) {
+                ofp_fatal(0, "Error parsing gmpls label: %s.", token);
+            }
+            else  { 
+                gmpls_label.experimenter = htonl(OTN_TLABS_EXP_ID);
+                gmpls_label.label[0] = htonl(label);
+                ofl_structs_match_put_tlabs_gmpls_label(m,OXM_TLAB_GMPLS_LABEL,&gmpls_label);
+            }
+            continue;
+        }
+#endif // OTN_SUPPORT
+
         ofp_fatal(0, "Error parsing match arg: %s.", token);
     }
     
@@ -1976,6 +2041,24 @@ parse_action(uint16_t type, char *str, struct ofl_action_header **act) {
             (*act) = a;
             break;
         }
+#ifdef OTN_SUPPORT
+        case (OFPAT_EXPERIMENTER): {
+            uint32_t label;
+            struct ofp_action_tlab_experimenter_header *da_act_exp_msg = (struct ofp_action_tlab_experimenter_header *)malloc(sizeof(struct ofp_action_tlab_experimenter_header));
+            memset(da_act_exp_msg, 0, sizeof(struct ofp_action_tlab_experimenter_header ));
+            da_act_exp_msg->action = OFPXMT_TLAB_GMPLS_LABEL ;
+            da_act_exp_msg->len = sizeof(struct ofp_action_tlab_experimenter_header);
+            da_act_exp_msg->experimenter = OTN_TLABS_EXP_ID;
+
+            if (parse32(str, NULL, 0, 0xffffffff, &(label) )) { 
+                ofp_fatal(0, "Error parsing queue in queue action: %s.", str);
+            }
+            printf("str= %s, label=%d",str,label);
+            da_act_exp_msg->payload[0] = label;
+            (*act) = (struct ofp_action_header *)da_act_exp_msg;
+            break;
+        }
+#endif // OTN_SUPPORT
         default: {
             ofp_fatal(0, "Error parsing action: %s.", str);
         }

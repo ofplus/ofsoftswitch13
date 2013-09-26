@@ -448,6 +448,20 @@ parse_oxm_entry(struct ofl_match *match, const struct oxm_field *f,
         case OFI_OXM_OF_IPV6_EXTHDR_W:
             ofl_structs_match_put16m(match, f->header, ntohs(*((uint16_t*) value)),ntohs(*((uint16_t*) mask)));
             return 0;
+#ifdef OTN_SUPPORT
+        case OFI_OXM_TLAB_GMPLS_SWCAPENCTYPE :{
+             return (ofl_structs_match_put_tlabs_gmpls_swcapenctype(match, f->header, (uint8_t*)value ));
+        }
+        case OFI_OXM_TLAB_GMPLS_SIGTYPE :{
+             return ofl_structs_match_put_tlabs_gmpls_sigtype(match, f->header, (uint8_t*)value);
+        }
+        case OFI_OXM_TLAB_GMPLS_LABEL :
+        case OFI_OXM_TLAB_GMPLS_LABEL_ODU :
+        {
+             return ofl_structs_match_put_tlabs_gmpls_label(match, f->header, (uint8_t*)value);
+        }
+#endif
+
         case NUM_OXM_FIELDS:
             NOT_REACHED();
     }
@@ -659,6 +673,41 @@ static void oxm_put_ipv6m(struct ofpbuf *buf, uint32_t header,
     ofpbuf_put(buf, mask, IPv6_ADDR_LEN);
 }
 
+#ifdef OTN_SUPPORT
+static void oxm_put_tlabs_gmpls_swcapenctype(struct ofpbuf *buf, uint32_t header,
+                    uint8_t value[OTN_GMPLS_SWCAPENCTYPE_LEN]){
+    oxm_put_header(buf, header);
+    ofpbuf_put(buf, value, OTN_GMPLS_SWCAPENCTYPE_LEN);
+}
+
+static void oxm_put_tlabs_gmpls_sigtype(struct ofpbuf *buf, uint32_t header,
+                    uint8_t value[OTN_GMPLS_SIGTYPE_LEN]){
+    oxm_put_header(buf, header);
+    ofpbuf_put(buf, value, OTN_GMPLS_SIGTYPE_LEN);
+}
+
+static void oxm_put_tlabs_gmpls_label(struct ofpbuf *buf, uint32_t header,
+                    uint8_t value[OTN_GMPLS_LABEL_ODU_LEN], size_t len){
+    uint8_t data[len];
+    uint32_t *src_ptr;
+    uint32_t *dest_ptr;
+    int i = 0;
+    oxm_put_header(buf, header);
+
+    /* Copy experimenter id */
+    //memcpy((void *) &data, (void *) value, sizeof(uint32_t));
+
+    for (i=0; i < (len / 4) + ((len % 4)?1:0); i++)
+    {
+        src_ptr = value + (i * 4);
+        dest_ptr = &(data[i * 4]);
+        *dest_ptr = htonl(*src_ptr);
+    }
+    /* Copy the label */
+    ofpbuf_put(buf, data, len);
+}
+#endif
+
 /* TODO: put the ethernet destiny address handling possible masks
 static void
 oxm_put_eth_dst(struct ofpbuf *b,
@@ -685,8 +734,17 @@ oxm_put_eth_dst(struct ofpbuf *b,
 
 static bool
 is_requisite(uint32_t header){
+#ifdef OTN_SUPPORT
+    if(header == OXM_OF_IN_PORT || header == OXM_OF_ETH_TYPE
+        || header == OXM_OF_VLAN_VID || header == OXM_OF_IP_PROTO
+        || header == OXM_TLAB_GMPLS_SWCAPENCTYPE
+        || header == OXM_TLAB_GMPLS_SIGTYPE
+        || header == OXM_TLAB_GMPLS_LABEL
+        || header == OXM_TLAB_GMPLS_LABEL_ODU) {
+#else
     if(header == OXM_OF_IN_PORT || header == OXM_OF_ETH_TYPE
         || header == OXM_OF_VLAN_VID || header == OXM_OF_IP_PROTO) {
+#endif
         return true;
     }
     return false;
@@ -734,6 +792,36 @@ int oxm_put_match(struct ofpbuf *buf, struct ofl_match *omt){
          memcpy(&value, oft->value,sizeof(uint8_t));
          oxm_put_8(buf,oft->header, value);
     }
+
+#ifdef OTN_SUPPORT
+    HMAP_FOR_EACH_WITH_HASH(oft, struct ofl_match_tlv, hmap_node, hash_int(OXM_TLAB_GMPLS_SWCAPENCTYPE, 0),
+         &omt->match_fields) {
+        uint8_t value[OTN_GMPLS_SWCAPENCTYPE_LEN];
+        memcpy(&value, oft->value, OTN_GMPLS_SWCAPENCTYPE_LEN);
+        oxm_put_tlabs_gmpls_swcapenctype(buf, oft->header, value);
+    }
+
+    HMAP_FOR_EACH_WITH_HASH(oft, struct ofl_match_tlv, hmap_node, hash_int(OXM_TLAB_GMPLS_SIGTYPE, 0),
+         &omt->match_fields) {
+        uint8_t value[OTN_GMPLS_SIGTYPE_LEN];
+        memcpy(&value, oft->value, OTN_GMPLS_SIGTYPE_LEN);
+        oxm_put_tlabs_gmpls_sigtype(buf, oft->header, value);
+    }
+
+    HMAP_FOR_EACH_WITH_HASH(oft, struct ofl_match_tlv, hmap_node, hash_int(OXM_TLAB_GMPLS_LABEL, 0),
+         &omt->match_fields) {
+        uint8_t value[OTN_GMPLS_LABEL_LEN];
+        memcpy(&value, oft->value, OTN_GMPLS_LABEL_LEN);
+        oxm_put_tlabs_gmpls_label(buf, oft->header, value, OTN_GMPLS_LABEL_LEN);
+    }
+
+    HMAP_FOR_EACH_WITH_HASH(oft, struct ofl_match_tlv, hmap_node, hash_int(OXM_TLAB_GMPLS_LABEL_ODU, 0),
+         &omt->match_fields) {
+        uint8_t value[OTN_GMPLS_LABEL_LEN];
+        memcpy(&value, oft->value, OTN_GMPLS_LABEL_LEN);
+        oxm_put_tlabs_gmpls_label(buf, oft->header, value, OTN_GMPLS_LABEL_LEN);
+    }
+#endif
 
     /* Loop through the remaining fields */
     HMAP_FOR_EACH(oft, struct ofl_match_tlv, hmap_node, &omt->match_fields){

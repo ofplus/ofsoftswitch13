@@ -1728,3 +1728,29 @@ ofl_msg_unpack(uint8_t *buf, size_t buf_len, struct ofl_msg_header **msg, uint32
 
     return 0;
 }
+#ifdef OTN_SUPPORT
+int ofl_get_msg_type (uint8_t *buf, size_t buf_len) { 
+    struct ofp_header *oh;
+    size_t len = buf_len;
+    ofl_err error = 0;
+    if (len < sizeof(struct ofp_header)) {
+        OFL_LOG_WARN(LOG_MODULE, "Received message is shorter than ofp_header.");
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+    }
+
+    oh = (struct ofp_header *)buf;
+
+    if (oh->version != OFP_VERSION) {
+        OFL_LOG_WARN(LOG_MODULE, "Received message has wrong version.");
+        return ofl_error(OFPET_HELLO_FAILED, OFPHFC_INCOMPATIBLE);
+    }
+
+    if (len != ntohs(oh->length)) {
+        OFL_LOG_WARN(LOG_MODULE, "Received message length does not match the length field.");
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+    }
+
+    return (oh->type) ;
+}
+ 
+#endif

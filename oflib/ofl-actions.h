@@ -107,6 +107,33 @@ struct ofl_action_experimenter {
     uint32_t  experimenter_id; /* Experimenter ID */
 };
 
+#ifdef OTN_SUPPORT
+/* Action header for OFPAT_EXPERIMENTER. */
+struct ofp_action_tlab_experimenter_header {
+     //enum ofp_action_type type;   /* One of OFPAT_*. */
+     uint16_t type;   /* One of OFPAT_*. */
+     uint16_t len; /* Length is a multiple of 8. */
+     uint32_t experimenter; /* Experimenter ID which takes the same
+                               form as in struct ofp_experimenter_header. */
+     uint8_t action; /* TELLABS specific action type */
+     uint8_t reserved[3]; /* Padding to a multiple of 4 bytes */
+     uint32_t payload[4]; /* Action specific data */
+     uint32_t pad; /* padding*/
+};
+OFP_ASSERT(sizeof(struct ofp_action_tlab_experimenter_header) == 32);
+
+/* Action header for OFPAT_EXPERIMENTER. */
+struct ofl_action_tlab_experimenter_header {
+     uint16_t type;   /* One of OFPAT_*. */
+     uint16_t len; /* Length is a multiple of 8. */
+     uint32_t experimenter; /* Experimenter ID which takes the same
+                               form as in struct ofp_experimenter_header. */
+     uint8_t action; /* TELLABS specific action type */
+     uint8_t reserved[3]; /* Padding to a multiple of 4 bytes */
+     uint32_t payload[4]; /* Action specific data */
+};
+OFP_ASSERT(sizeof(struct ofl_action_tlab_experimenter_header) == 28);
+#endif
 
 /****************************************************************************
  * Functions for (un)packing action structures
@@ -179,6 +206,13 @@ ofl_action_to_string(struct ofl_action_header *act, struct ofl_exp *exp);
 void
 ofl_action_print(FILE *stream, struct ofl_action_header *act, struct ofl_exp *exp);
 
+#ifdef OTN_SUPPORT
+int  ofl_exp_msg_act_pack(struct ofl_action_header *src, struct ofp_action_header *dst);
+ofl_err ofl_exp_msg_act_unpack(struct ofp_action_header *src, size_t *len, struct ofl_action_header **dst);
 
+int ofl_exp_msg_act_free(struct ofl_action_header *act);
+size_t  ofl_exp_msg_act_ofp_len(struct ofl_action_header *act);
+char   * ofl_exp_msg_act_to_string(struct ofl_action_header *act);
+#endif
 
 #endif /* OFL_ACTIONS */

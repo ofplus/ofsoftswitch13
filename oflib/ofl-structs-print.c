@@ -234,6 +234,32 @@ ofl_structs_oxm_tlv_to_string(struct ofl_match_tlv *f) {
 void
 ofl_structs_oxm_tlv_print(FILE *stream, struct ofl_match_tlv *f)
 {
+#ifdef OTN_SUPPORT
+                uint16_t oxm_class = OXM_VENDOR(f->header);
+                if (oxm_class == 0xffff) {
+                  uint8_t field = OXM_FIELD(f->header);
+                  if (field == OFPXMT_TLAB_GMPLS_SWCAPENCTYPE){
+                         ofp_oxm_tlab_gmpls_swcapenctype_t *data=(ofp_oxm_tlab_gmpls_swcapenctype_t *)f->value;
+                            fprintf(stream, "gmpls_swcapenctype={experimenter_id=\"0x%2x\"",ntohl( data->experimenter));
+                            fprintf(stream, ", gmpls_swcap=\"0x%x\"", data->swcap);
+                            fprintf(stream, ", gmpls_enctype=\"0x%x\"", data->enctype);
+                            fprintf(stream, "} ");
+                  }else if (field == OFPXMT_TLAB_GMPLS_SIGTYPE){
+                         ofp_oxm_tlab_gmpls_sigtype_t *data=(ofp_oxm_tlab_gmpls_sigtype_t *)f->value;
+                            fprintf(stream, "gmpls_sigtype={experimenter_id=\"0x%2x\"", ntohl(data->experimenter));
+                            fprintf(stream, ", gmpls_swcap=\"0x%2x\"", data->sig_type);
+                            fprintf(stream, "} ");
+                  }else if (field == OFPXMT_TLAB_GMPLS_LABEL){
+                         ofp_oxm_tlab_gmpls_label_t *data=(ofp_oxm_tlab_gmpls_label_t *)f->value;
+                            uint32_t *label = (uint32_t *) data->label;
+                            fprintf(stream, "gmpls_label={experimenter_id=\"0x%2x\"", ntohl(data->experimenter));
+                            fprintf(stream, ", gmpls_label=\"0x%2x\"",ntohl( *label));
+                            fprintf(stream, "} ");
+                  }
+
+                } else {
+#endif
+
 	uint8_t field = OXM_FIELD(f->header);
 
 	switch (field) {
@@ -426,6 +452,9 @@ ofl_structs_oxm_tlv_print(FILE *stream, struct ofl_match_tlv *f)
 		default:
 			fprintf(stream, "unknown type %d", field);
 	}
+#ifdef OTN_SUPPORT
+    }
+#endif
 }
 
 

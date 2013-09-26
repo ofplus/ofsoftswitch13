@@ -148,8 +148,14 @@ ofl_action_print(FILE *stream, struct ofl_action_header *act, struct ofl_exp *ex
         case OFPAT_EXPERIMENTER: {
             if (exp == NULL || exp->act == NULL || exp->act->to_string == NULL) {
                 struct ofl_action_experimenter *a = (struct ofl_action_experimenter *)act;
-
+#ifndef OTN_SUPPORT
                 fprintf(stream, "{id=\"0x%"PRIx32"\"}", a->experimenter_id);
+#else
+                struct ofp_action_tlab_experimenter_header *b = (struct ofp_action_tlab_experimenter_header *)act;
+                fprintf(stream, "{id=\"0x%"PRIx32"\"}", b->experimenter);
+                fprintf(stream, "{ action=\"0x%"PRIx8"\"}", b->action);
+                fprintf(stream, "{ label=\"0x%"PRIx32"\"}", b->payload[0]);
+#endif
             } else {
                 char *c = exp->act->to_string(act);
                 fprintf(stream, "%s", c);
