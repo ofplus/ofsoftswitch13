@@ -116,5 +116,8 @@ void netdev_monitor_set_devices(struct netdev_monitor *, char **, size_t);
 const char *netdev_monitor_poll(struct netdev_monitor *);
 void netdev_monitor_run(struct netdev_monitor *);
 void netdev_monitor_wait(struct netdev_monitor *);
+#ifdef OTN_SUPPORT
+int netdev_open_otn(const char *name, struct netdev **netdev);
+#endif
 
 #endif /* netdev.h */

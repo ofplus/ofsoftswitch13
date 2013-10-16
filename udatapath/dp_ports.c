@@ -253,6 +253,11 @@ dp_ports_run(struct datapath *dp) {
         if (IS_HW_PORT(p)) {
             continue;
         }
+#ifdef OTN_SUPPORT
+        if (IS_OTN_PORT(p)) {
+            continue;
+        }
+#endif
         if (buffer == NULL) {
             /* Allocate buffer with some headroom to add headers in forwarding
              * to the controller or adding a vlan tag, plus an extra 2 bytes to
@@ -299,6 +304,121 @@ static uint32_t port_speed(uint32_t conf) {
     return 0;
 }
 
+#ifdef OTN_SUPPORT
+static int
+new_otn_port(struct datapath *dp, struct sw_port *port, uint32_t port_no, const char *netdev_name)
+{
+    int32_t shelf=0,slot=0,port_num=0;
+    uint32_t ifindex = 0;
+    int32_t ret_value = 0;
+
+    ret_value = sscanf(netdev_name+4, "%*[a-z:]%d%*[:]%d%*[:]%d",
+                       &shelf, &slot, &port_num);
+
+    if (ret_value < 3) {
+        fprintf(stderr, "Invalid interface name %s", netdev_name);
+        return -1;
+    }
+
+    if (shelf <= 0) {
+        fprintf(stderr, "Invalid shelf %d", shelf);
+        return -1;
+    }
+
+    if (slot <= 0) {
+        fprintf(stderr, "Invalid slot %d", slot);
+        return -1;
+    }
+
+    if (port_num <= 0) {
+        fprintf(stderr, "Invalid port %d", port_num);
+        return -1;
+    }
+
+    if (!strncmp(netdev_name + 4, "ots:", 4)) {
+        ifindex = (0x1 << 29) | (shelf << 22) | (slot << 17) | (port_num << 12);
+    } else if (!strncmp(netdev_name + 4, "och:", 4)) {
+        ifindex = (0x1 << 29) | (shelf << 22) | (slot << 17) | (port_num << 12) | 0x2;
+    } else if (!strncmp(netdev_name + 4, "otu:", 4)) {
+        ifindex = (shelf << 22) | (slot << 17) | (port_num << 12);
+    }
+
+    fprintf(stdout, "\nInterface name = %s, ifindex = 0x%x\n", netdev_name, ifindex);
+
+    /* NOTE: port struct is already allocated in struct dp */
+    memset(port, '\0', sizeof *port);
+
+    port->dp = dp;
+
+    port->conf = xmalloc(sizeof(struct ofl_port));
+    port->conf->port_no    = port_no;
+    memset(port->conf->hw_addr, 0x0, ETH_ADDR_LEN);
+    port->conf->name       = strcpy(xmalloc(strlen(netdev_name) + 1 - 4), netdev_name + 4);
+    port->conf->config     = 0x00000000;
+    port->conf->state      = 0x00000000 | OFPPS_LIVE;
+
+    if (!strncmp(netdev_name + 4, "ots:", 4)) {
+        port->conf->curr       = OFPPF_FIBER | OFPPF_OTN_OTS;
+        port->conf->advertised = OFPPF_FIBER | OFPPF_OTN_OTS;
+        port->conf->supported  = OFPPF_FIBER | OFPPF_OTN_OTS;
+        port->conf->peer       = OFPPF_FIBER | OFPPF_OTN_OTS;
+    } else if (!strncmp(netdev_name + 4, "och:", 4)) {
+        port->conf->curr       = OFPPF_FIBER | OFPPF_OTN_OPS;
+        port->conf->advertised = OFPPF_FIBER | OFPPF_OTN_OPS;
+        port->conf->supported  = OFPPF_FIBER | OFPPF_OTN_OPS;
+        port->conf->peer       = OFPPF_FIBER | OFPPF_OTN_OPS;
+    } else if (!strncmp(netdev_name + 4, "otu:", 4)) {
+        port->conf->curr       = OFPPF_FIBER | OFPPF_OTN_OTU;
+        port->conf->advertised = OFPPF_FIBER | OFPPF_OTN_OTU;
+        port->conf->supported  = OFPPF_FIBER | OFPPF_OTN_OTU;
+        port->conf->peer       = OFPPF_FIBER | OFPPF_OTN_OTU;
+    }
+    port->conf->curr_speed = 0x0;
+    port->conf->max_speed  = 0x0;
+
+    port->stats = xmalloc(sizeof(struct ofl_port_stats));
+    port->stats->port_no = port_no;
+    port->stats->rx_packets   = 0;
+    port->stats->tx_packets   = 0;
+    port->stats->rx_bytes     = 0;
+    port->stats->tx_bytes     = 0;
+    port->stats->rx_dropped   = 0;
+    port->stats->tx_dropped   = 0;
+    port->stats->rx_errors    = 0;
+    port->stats->tx_errors    = 0;
+    port->stats->rx_frame_err = 0;
+    port->stats->rx_over_err  = 0;
+    port->stats->rx_crc_err   = 0;
+    port->stats->collisions   = 0;
+    port->stats->duration_sec = 0;
+    port->stats->duration_nsec = 0;
+    port->flags |= SWP_USED | SWP_OTN_PORT;
+    netdev_open_otn(netdev_name, &(port->netdev));
+    port->max_queues = 0x0;
+    port->num_queues = 0;
+    port->created = time_msec();
+
+    memset(port->queues, 0x00, sizeof(port->queues));
+
+    list_push_back(&dp->port_list, &port->node);
+    dp->ports_num++;
+
+    {
+    /* Notify the controllers that this port has been added */
+    struct ofl_msg_port_status msg =
+            {{.type = OFPT_PORT_STATUS},
+             .reason = OFPPR_ADD, .desc = port->conf};
+
+        dp_send_message(dp, (struct ofl_msg_header *)&msg, NULL/*sender*/);
+    }
+
+
+    return 0;
+}
+#endif
+
+
+
 /* Creates a new port, with queues. */
 static int
 new_port(struct datapath *dp, struct sw_port *port, uint32_t port_no,
@@ -309,6 +429,13 @@ new_port(struct datapath *dp, struct sw_port *port, uint32_t port_no,
     struct in_addr in4;
     int error;
     uint64_t now;
+
+#ifdef OTN_SUPPORT
+    if (!strncmp(netdev_name, "otp:", 4)) {
+        fprintf(stdout, "\nInterface name = %s\n", netdev_name);
+        return new_otn_port(dp, port, port_no, netdev_name);
+    }
+#endif
 
     now = time_msec();
 

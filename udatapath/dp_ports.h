@@ -75,11 +75,18 @@ struct sw_queue {
 enum sw_port_flags {
     SWP_USED             = 1 << 0,    /* Is port being used */
     SWP_HW_DRV_PORT      = 1 << 1,    /* Port controlled by HW driver */
+#ifdef OTN_SUPPORT
+    SWP_OTN_PORT         = 1 << 2,
+#endif
 };
 #if defined(OF_HW_PLAT) && !defined(USE_NETDEV)
 #define IS_HW_PORT(p) ((p)->flags & SWP_HW_DRV_PORT)
 #else
 #define IS_HW_PORT(p) 0
+#endif
+
+#ifdef OTN_SUPPORT
+#define IS_OTN_PORT(p) ((p)->flags & SWP_OTN_PORT)
 #endif
 
 #define PORT_IN_USE(p) (((p) != NULL) && (p)->flags & SWP_USED)

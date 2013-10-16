@@ -1695,3 +1695,15 @@ set_flags(const char *netdev_name, int flags)
     }
     return 0;
 }
+
+#ifdef OTN_SUPPORT
+int
+netdev_open_otn(const char *name, struct netdev **netdev)
+{
+    *netdev = xmalloc(sizeof(struct netdev));
+    memset(*netdev, 0, sizeof(struct netdev));
+    (*netdev)->name = xstrdup(name);
+
+    return 0;
+}
+#endif

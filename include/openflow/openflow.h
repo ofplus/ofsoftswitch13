@@ -187,7 +187,26 @@ enum ofp_port_features {
     OFPPF_FIBER = 1 << 12,      /* Fiber medium. */
     OFPPF_AUTONEG = 1 << 13,    /* Auto-negotiation. */
     OFPPF_PAUSE = 1 << 14,      /* Pause. */
-    OFPPF_PAUSE_ASYM = 1 << 15  /* Asymmetric pause. */
+    OFPPF_PAUSE_ASYM = 1 << 15,  /* Asymmetric pause. */
+#ifdef OTN_SUPPORT
+    /* Bits 16-17 are unused. */
+    OFPPF_OTN_OPS = 1 << 18,     /* Single OCh Channel OPS port e.g. OCH-P */
+    OFPPF_OTN_OTS = 1 << 19,     /* Multiple OCh Channel OTS port */
+    OFPPF_OTN_OTU = 1 << 20,     /* OTN port is an OTU */
+    OFPPF_OTN_ODU = 1 << 21,     /* OTN port is an ODU */
+    OFPPF_OTN_TS1_25 = 1 << 22,  /* Port supports 1.25G TS mapping of ODUj */
+    OFPPF_OTN_TS2_5 = 1 << 23,   /* Port supports 2.5G TS mapping of ODUj */
+  /* Bits 24-26 are a 3-bit unsigned int defining the datarate of the port */
+    OFPPF_OTN_OxU1 = 1 << 24,    /* Port operates at 2.5G */
+    OFPPF_OTN_OxU2 = 2 << 24,    /* Port operates at 10G */
+    OFPPF_OTN_OxU3 = 3 << 24,    /* Port operates at 40G */
+    OFPPF_OTN_OxU4 = 4 << 24,    /* Port operates at 100G */
+    OFPPF_OTN_OxU2e = 7 << 24,   /* Port operates at overclocked 10G */
+  /* Bits 27-28 are unused. */
+    OFPPF_OTN_ODU0 = 1 << 29,    /* OTN port supports 1.25G ODUj */
+    OFPPF_OTN_ODUFLEX = 1 << 30, /* OTN port supports ODUFlex */
+    OFPPF_OTN_ODU2e = 1 << 31,   /* OTN port supports overclocked 10G ODU */
+#endif
 };
 
 /* Common description for a queue. */
@@ -354,7 +373,7 @@ OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_swcapenctype) == 12);
 struct ofp_oxm_tlab_gmpls_sigtype {
   uint32_t oxm_header; /* oxm_class = OFPXMC_EXPERIMENTER */
   uint32_t experimenter; /* Experimenter ID which takes the same form as in struct ofp_experimenter_header. */
-  uint8_t swcap;  /* GMPLS Switching Capability as defined by IANA */
+  uint8_t sigtype;  /* GMPLS Signal Type as defined by IANA */
 };
 OFP_ASSERT(sizeof(struct ofp_oxm_tlab_gmpls_sigtype) == 12);
 #endif

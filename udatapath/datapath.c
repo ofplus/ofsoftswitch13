@@ -388,6 +388,11 @@ dp_wait(struct datapath *dp)
         if (IS_HW_PORT(p)) {
             continue;
         }
+#ifdef OTN_SUPPORT
+        if (IS_OTN_PORT(p)) {
+            continue;
+        }
+#endif
         netdev_recv_wait(p->netdev);
     }
     LIST_FOR_EACH (r, struct remote, node, &dp->remotes) {

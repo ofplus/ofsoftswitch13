@@ -100,6 +100,9 @@ main(int argc, char *argv[])
     
 }
 #endif
+#ifdef OTN_SUPPORT
+static void port_status_check(struct datapath *dp) ;
+#endif
 
 int
 udatapath_cmd(int argc, char *argv[])
@@ -178,6 +181,9 @@ udatapath_cmd(int argc, char *argv[])
         dp_run(dp);
         dp_wait(dp);
         poll_block();
+#ifdef OTN_SUPPORT
+        port_status_check(dp);
+#endif
     }
 
     return 0;
@@ -372,3 +378,53 @@ usage(void)
         ofp_rundir);
     exit(EXIT_SUCCESS);
 }
+
+#ifdef OTN_SUPPORT
+static void port_status_check(struct datapath *dp) 
+{
+    #define OTN_INTERFACES_FILE "/tmp/otn_interfaces.ini"
+    #define BUFFSIZE 1024
+    uint32_t port_no;
+    char command[BUFFSIZE];
+    char buff[BUFFSIZE];
+    struct sw_port *port = NULL;
+    FILE *fp = NULL;
+ 
+    for (port_no = 1; port_no < DP_MAX_PORTS; port_no++) {
+        port = &dp->ports[port_no];
+        if (port && port->conf) {
+            sprintf(command, "grep %s " OTN_INTERFACES_FILE " | cut -d',' -f2 ",
+                            port->conf->name);
+            fp = popen(command, "r");
+            memset(buff, 0, BUFFSIZE);
+            if (fp == NULL) {
+                printf(  "Failed to run command: %s", strerror(errno));
+                continue;
+            }
+            if (fgets(buff, sizeof(buff), fp) != NULL) {
+                buff[strlen(buff) - 1] = '\0';
+
+                if ((strcmp(buff, "up") == 0) && !(port->conf->state & OFPPS_LIVE) ) {
+                    port->conf->state = 0x00000000 | OFPPS_LIVE;
+                } else if ((strcmp(buff, "down") == 0) && !(port->conf->state & OFPPS_LINK_DOWN)) {
+                    port->conf->state = 0x00000000 | OFPPS_LINK_DOWN;
+                } else {
+                    goto close_fp;
+                }
+
+                /* Send the port status */
+                struct ofl_msg_port_status status_msg =
+                   {{.type = OFPT_PORT_STATUS},
+                    .reason = OFPPR_MODIFY,
+                    .desc = port->conf};
+	        dp_send_message(dp, (struct ofl_msg_header *)&status_msg,
+                                    NULL/*sender*/);
+            }
+            close_fp:
+                fclose(fp);
+        }
+    }
+
+    return;
+}
+#endif
